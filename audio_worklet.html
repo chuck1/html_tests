@@ -1,0 +1,21 @@
+<body>
+<button>play</button>
+<pre></pre>
+<script>
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audioWorklet = audioCtx.audioWorklet;
+
+class MyWorkletNode extends AudioWorkletNode {
+  constructor(context) {
+    super(context, 'my-worklet-processor');
+  }
+}
+
+audioCtx.audioWorklet.addModule('processors.js').then(() => {
+  let node = new MyWorkletNode(context);
+});
+
+
+
+</script>
+</body>

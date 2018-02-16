@@ -1,0 +1,134 @@
+<script
+  src="http://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+<body>
+<button>play</button>
+<input type="range" min="100" max="1000" value="50">
+<pre></pre>
+<script id="myScript">
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var button = document.querySelector('button');
+var pre = document.querySelector('pre');
+var myScript = document.querySelector('script#myScript');
+var slider = document.querySelector('input');
+
+pre.innerHTML = myScript.innerHTML;
+
+var t;
+var y;
+var freq = 500;
+var phi = 0;
+
+// Stereo
+var channels = 2;
+var duration = 1;
+// Create an empty two second stereo buffer at the
+// sample rate of the AudioContext
+var frameCount = audioCtx.sampleRate * duration;
+var volume = 0.05;
+var bufferSize = 1024;
+var freq_change_rate = 1000; // Hz/second
+var sampleWidth = 1 / audioCtx.sampleRate;
+var freq_change_per_sample = freq_change_rate * sampleWidth;
+
+var myArrayBuffer = audioCtx.createBuffer(2, frameCount, audioCtx.sampleRate);
+
+console.log("frameCount", frameCount);
+console.log("process interval", bufferSize / audioCtx.sampleRate);
+console.log("sample rate", audioCtx.sampleRate);
+console.log("sample width", sampleWidth);
+console.log("freq_change_per_sample", freq_change_per_sample);
+
+var node = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+var chunk = 0;
+
+node.onaudioprocess = function(e) {
+	//console.log(e);
+	
+	// this function will be called every (bufferSize / audioCtx.sampleRate) seconds
+	
+	
+	var freq0 = slider.value;
+	freq_diff = freq0 - freq;
+	
+	console.log(freq0, freq, freq_diff, "phi:", phi);
+
+	chunk += 1;
+	
+	var input = e.inputBuffer.getChannelData(0);
+    var output = e.outputBuffer.getChannelData(0);
+	for (var i = 0; i < bufferSize; i++) {
+		f0 = freq;
+		
+		//if(Math.abs(freq_diff) < freq_change_per_sample)
+		
+		freq_diff = freq0 - freq;
+		
+		if(freq_diff > 0) {
+			freq = f0 + Math.min(freq_change_per_sample, freq_diff);
+		} else if(freq_diff < 0) {
+			freq = f0 + Math.max(-freq_change_per_sample, freq_diff);
+		}
+		
+		
+		t1 = (i + chunk * bufferSize) / audioCtx.sampleRate;
+		t0 = t1 - sampleWidth;
+		
+		phi = f0 * (t0 + phi) / freq - t0;
+		
+		y = Math.sin(2 * Math.PI * freq * (t1 + phi));
+		
+		output[i] = y * volume;
+	}
+}
+
+
+
+
+function play() {
+	console.log("play", freq);
+	
+	var source = audioCtx.createBufferSource();
+	// set the buffer in the AudioBufferSourceNode
+	source.buffer = myArrayBuffer;
+	// connect the AudioBufferSourceNode to the
+	// destination so we can hear the sound
+	source.connect(node);
+	node.connect(audioCtx.destination);
+	
+	source.loop = true;
+	
+	//source.onended = play;
+	
+	//create_data();
+	
+	source.start();
+}
+
+function create_data(){
+// Fill the buffer with white noise;
+	//just random values between -1.0 and 1.0
+	for (var channel = 0; channel < channels; channel++) {
+		// This gives us the actual ArrayBuffer that contains the data
+		var nowBuffering = myArrayBuffer.getChannelData(channel);
+		for (var i = 0; i < frameCount; i++) {
+			// Math.random() is in [0; 1.0]
+			// audio needs to be in [-1.0; 1.0]
+			t = i / audioCtx.sampleRate;
+			//t += channel / freq / 2;
+
+			y = Math.sin(2 * Math.PI * freq * t);
+			//y = Math.random() * 2 - 1;
+			nowBuffering[i] = y * volume;
+		}
+	}
+}
+
+
+button.onclick = function() {
+	play();
+}
+</script>
+</body>
